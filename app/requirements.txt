@@ -1,0 +1,12 @@
+ultralytics
+dotenv
+groq
+langchain_groq
+langchain_huggingface
+langchain_text_splitters
+langchain_community
+langchain_core
+pypdf
+json_repair
+sentence-transformers
+chromadb
