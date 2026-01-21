@@ -10,6 +10,11 @@ from dotenv import load_dotenv
 from constat import analyse_constat
 from yolo import objet_detection
 
+from json_repair import repair_json
+import json
+import os
+
+
 llm = None
 embedding_model = None
 
@@ -31,10 +36,11 @@ def load_rag_artificats():
 
 
 def final_decision(damage_list:list,constat_element:dict):
-
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    cnd_path = os.path.join(BASE_DIR,"ConditionGeneralAssuranceVarde.pdf")
     load_rag_artificats() # A retirer, se chargera au lifespan
 
-    loader = PyPDFLoader("app/ConditionGeneralAssuranceVarde.pdf")
+    loader = PyPDFLoader(cnd_path)
     docs = loader.load()
 
     for i in docs:
@@ -64,70 +70,96 @@ def final_decision(damage_list:list,constat_element:dict):
 
     except KeyError as e:
         print("Something went wrong:",e)
-    #print()
-    #print("Look here",vectorstore.similarity_search("bonnet-dent Rear-windscreen-Damage N'avait pas de clignotant ! Etait sur son telephone !",k=2))
-    #return query
+    
 
     prompt = f"""
-    Tu es un expert en investigation d'assurances automobiles, spécialisé dans l'analyse de constats manuscrits difficiles et la détection de fraudes.
+   You are an expert in auto insurance investigations, specializing in analyzing complex handwritten accident reports and fraud detection.
 
-    RÈGLES STRICTES (À RESPECTER ABSOLUMENT) :
-    1. La liste des dégâts détectés par vision ({damage_list}) est la source de vérité exhaustive.
-    2. TOUS les éléments présents dans damage_list DOIVENT apparaître dans "details_degats".
-    3. AUCUN dégât de damage_list ne doit être ignoré, même s’il n’a pas été déclaré par le véhicule A.
-    4. Si un dégât est détecté par vision mais non déclaré par A, il doit apparaître comme tel dans l’analyse.
-    5. Tous les noms de pièces et dégâts dans le JSON final DOIVENT être en français.
-    - Si un terme est fourni en anglais, tu dois le traduire.
-    - Si la traduction exacte est incertaine, utilise un terme automobile générique en français.
+    STRICT RULES (MUST BE FOLLOWED):
 
-    CONTEXTE :
-    Un accident a eu lieu entre la voiture A et la voiture B.
+    1. The damage list detected by vision ({damage_list}) is the definitive source of information.
 
-    Règles d'assurance applicables (extraites du RAG) :
+    2. ALL items in damage_list MUST appear in "details_degats".
+
+    3. NO damage from damage_list should be ignored, even if it was not reported by vehicle A.
+
+    4. If damage is detected by vision but not reported by A, it must be included in the analysis.
+
+    5. All part and damage names in the final JSON MUST be in French.
+
+    - If a term is provided in English, you must translate it.
+
+    - If the exact translation is uncertain, use a generic automotive term in French.
+    CONTEXT:
+
+    An accident occurred between car A and car B.
+
+    Applicable insurance rules (extracted from the RAG):
+
     {vectorstore.similarity_search(query)}
 
-    Déclarations du véhicule A (JSON brut) :
-    {constat_element['vehicule A']}
+    Declarations from vehicle A regarding vehicle B :
+    -   {constat_element['vehicule A']['Observation faite par A']}
 
-    Déclarations du véhicule B (JSON brut) :
-    {constat_element['vehicule B']}
+    Damage that vehicle A reported having received : 
+    -   {constat_element['vehicule A']['Damage subit par A']}
 
-    Dégâts observés sur le véhicule A par vision automatique (liste exhaustive) :
-    {damage_list}
+    Declarations from vehicle B regarding vehicle A:
+    -   {constat_element['vehicule B']['Observation faite par B']}
 
-    MISSION :
-    - Comparer les déclarations humaines avec les dégâts réellement observés.
-    - Identifier toute exclusion d'assurance applicable.
-    - Déterminer si le véhicule A est remboursé ou non.
+    Damage observed on vehicle A by automatic vision (exhaustive list):
+    -   {damage_list}
 
-    FORMAT DE SORTIE — JSON STRICT UNIQUEMENT :
+    MISSION:
+
+    - Compare the witness statements with the actual observed damage.
+
+    - Identify any applicable insurance exclusions.
+
+    - Determine whether vehicle A (only vehicle A) is covered by insurance.
+
+    OUTPUT FORMAT — STRICT JSON ONLY:
+
     {{
-    "decodage_texte": "Explication détaillée et logique de l’analyse, y compris les incohérences éventuelles",
+    "decodage_texte": "Detailed and logical explanation of the analysis, including any inconsistencies",
+
     "exclusions_detectees": true/false,
-    "raison_exclusion": "Néant ou justification précise",
+
+    "raison_exclusion": "None or Specify the reason why the vehicle A cannot be covered by insurance.",
+
     "details_degats": [
-        {{
-        "piece": "nom de la pièce en français",
-        "couvert": true/false,
-        "franchise": "montant réel en euros ou 'Néant'"
-        }}
-    ],
-    "decision_finale": "REMBOURSÉ" ou "NON REMBOURSÉ"
+    {{
+    "piece": "name of the piece in French",
+
+    "couvert": true/false,
+
+    "franchise": "actual amount in euros or 'None'"
+
     }}
 
-    IMPORTANT :
-    - La liste details_degats doit contenir exactement tous les dégâts présents dans damage_list.
-    - Ne retourne AUCUN texte hors du JSON.
+    ],
+
+    "decision_finale": "remboursé " or "non remboursé"
+
+    }}
+
+    IMPORTANT:
+
+    - The details_degats list must contain exactly all the damages present in damage_list.
+
+    - Returns NO text outside of the JSON, the JSON must be in french language.
     """
 
-    reponse = llm.invoke(prompt)
+    reponse_raw = llm.invoke(prompt)
+    reponse = repair_json(reponse_raw.content)
+    return json.loads(reponse)
 
-    return reponse.content
 
-damage_list = objet_detection("app\model\dam2.jpg")
-constat_element = analyse_constat("app\model\constat_aimable1.jpg")
+# damage_list = objet_detection("app\model\dam5.jpg")
+# constat_element = analyse_constat("app\model\constat2.jpg")
 
-print(final_decision(damage_list,constat_element))
+# print(final_decision(damage_list,constat_element))
+
 
 
 

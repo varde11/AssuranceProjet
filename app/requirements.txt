@@ -10,3 +10,6 @@ pypdf
 json_repair
 sentence-transformers
 chromadb
+fastapi
+python-multipart
+sqlalchemy

@@ -9,10 +9,11 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
     
+load_dotenv()
 def analyse_constat (image_path):
 
     base64_image = encode_image(image_path)
-    load_dotenv()
+    
     client = Groq(api_key=os.getenv("myfirstApiKey"))
 
 
@@ -49,9 +50,10 @@ def analyse_constat (image_path):
     # Le JSON renvoiyé n'était pas très bien formé
     return json.loads(reponse) # converti le str JSON en dict pyhton
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-resulta=analyse_constat(os.path.join(BASE_DIR,"model","constat_aimable1.jpg"))
-print(resulta)
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# path_img=os.path.join(BASE_DIR,"model","constat2.jpg" ) 
+# resulta=analyse_constat(path_img)
+# print(resulta)
 
 # Exemple de résultat:
 #{'vehicule A': {'Damage subit par A': 'Pare choc droit endommage', 'Observation faite Par A': "N'avait pas de clignotant !"}, 
