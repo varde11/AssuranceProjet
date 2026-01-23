@@ -1,0 +1,36 @@
+services:
+  imageassurance:
+    build: ./app
+      
+    image: imageassurance
+    container_name: containerassurance
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      myfirstApiKey: ${myfirstApiKey}
+
+      
+  db:
+    image: postgres:15
+    container_name: assurance_db
+    ports:
+      - "5433:5432"
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: assurance_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d assurance_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
