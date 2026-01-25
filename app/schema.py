@@ -6,6 +6,7 @@ from enum import Enum
 class Client_out(BaseModel):
     id_client:int = Field(ge=1)
     nom : str 
+    model_config = {"from_attributes":True}
 
 class Client_In(BaseModel):
     nom:str
@@ -23,6 +24,7 @@ class Prediction_out(BaseModel):
     model_config = {"from_attributes": True}
     
 
-class EnumDecision(Enum):
+class EnumDecision(str,Enum):
+    all = "all"
     remboursé  = "remboursé"
     non_remboursé  = "non remboursé"
