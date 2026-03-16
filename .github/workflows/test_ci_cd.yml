@@ -26,7 +26,7 @@ jobs :
 
           # Utiliser une version torch légère + compatible torchvision (pour éviter les conflits)
           pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
-            torch==2.4.0+cpu torchvision==0.17.0+cpu
+            torch==2.4.0 torchvision==0.19
 
           # Les commandes apt requièrent sudo dans GitHub Actions
           sudo apt-get update && sudo apt-get install -y \
