@@ -14,7 +14,7 @@ def analyse_constat (image_path):
 
     base64_image = encode_image(image_path)
     
-    client = Groq(api_key=os.getenv("myfirstApiKey"))
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
     chat_completion = client.chat.completions.create(

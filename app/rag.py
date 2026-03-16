@@ -26,7 +26,7 @@ def load_rag_artificats():
         load_dotenv()
 
         llm = ChatGroq(
-            api_key= os.getenv("myfirstApiKey") ,
+            api_key= os.getenv("GROQ_API_KEY") ,
             model="llama-3.3-70b-versatile", 
             temperature=0.1
         ).with_structured_output(Prediction_out)
