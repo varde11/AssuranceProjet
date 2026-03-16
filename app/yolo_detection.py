@@ -16,7 +16,7 @@ def load_artificats_yolo():
 
 def objet_detection(image_path):
 
-    #load_artificats_yolo()
+    load_artificats_yolo()
 
     damage = []
     results = model(image_path,conf=0.1, iou=0.5)

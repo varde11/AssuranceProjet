@@ -38,6 +38,7 @@ def load_rag_artificats():
 
 
 def final_decision(damage_list:list,constat_element:dict):
+    load_rag_artificats()
     
     query =""
 
