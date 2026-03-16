@@ -1,0 +1,54 @@
+['Front-Windscreen-Damage', 'Headlight-Damage', 'Major-Rear-Bumper-Dent', 'Rear-windscreen-Damage', 'RunningBoard-Dent', 'Sidemirror-Damage', 'Signlight-Damage', 'Taillight-Damage', 'bonnet-dent', 'doorouter-dent', 'doorouter-scratch', 'fender-dent', 'front-bumper-dent', 'front-bumper-scratch', 'medium-Bodypanel-Dent', 'paint-chip', 'paint-trace', 'pillar-dent', 'quaterpanel-dent', 'rear-bumper-dent', 'rear-bumper-scratch', 'roof-dent']
+
+Damage that vehicle B reported having received : 
+    {constat_element['vehicule B']['Damage subit par B']}
+
+
+21/01: ✔️
+    - push la partie fastapi
+    - concevoir la partie pydantic et base de données 
+22/01:✔️
+    - push la partie pydantic et base de données
+    - configurer docker et tester tout le reste ( backend)
+
+ 23/01: ✔️
+    - push la partie docker (backend) sans les ajout des routes
+    
+    - Insere la partie lifespan aussi ; epreuve bepc physique
+
+24/01 : 
+    - push les routes et la partie docker backend est over
+    - configurer la parti front en docker
+    
+25/01 :
+    push la partie front en docker ;
+    ecrire les test et le workflow
+
+  ui:
+    build: ./ui
+    container_name: sentiment_ui
+    ports:
+      - "8501:8501"
+    depends_on:
+      - imagesentiment
+    environment:
+      API_URL: http://imagesentiment:8000
+
+
+
+ 26/01 :
+    - push le test
+    - configurer HF
+26/01 :
+    - configurer Streamlit 
+
+faire levhealthy check du front
+
+
+
+
+
+
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \

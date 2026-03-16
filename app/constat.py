@@ -9,7 +9,7 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
     
-load_dotenv()
+
 def analyse_constat (image_path):
 
     base64_image = encode_image(image_path)
@@ -51,7 +51,7 @@ def analyse_constat (image_path):
     return json.loads(reponse) # converti le str JSON en dict pyhton
 
 # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# path_img=os.path.join(BASE_DIR,"model","constat2.jpg" ) 
+# path_img=os.path.join(BASE_DIR,"model","constat_test2.jpg" ) 
 # resulta=analyse_constat(path_img)
 # print(resulta)
 

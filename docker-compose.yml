@@ -1,7 +1,6 @@
 services:
   imageassurance:
     build: ./app
-      
     image: imageassurance
     container_name: containerassurance
     ports:
@@ -12,8 +11,27 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       myfirstApiKey: ${myfirstApiKey}
+      API_URL: ${API_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\" || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 900s
 
+  ui:
+    build: ./ui
+    image: uiassurance
+    container_name: uiassurance
+    ports:
+      - "8501:8501"
+    depends_on:
+      imageassurance:
+        condition: service_healthy
+    environment:
+      API_URL: ${API_URL}
       
+
   db:
     image: postgres:15
     container_name: assurance_db

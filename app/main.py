@@ -28,7 +28,7 @@ async def lifespan(app:FastAPI):
 
 
 
-app = FastAPI(title="It's not just a test",lifespan=lifespan)
+app = FastAPI(title="API Assurance",lifespan=lifespan)
 
 
 @app.get("/health")
@@ -173,11 +173,17 @@ async def delete_client_by_idClient(id_client:int,db:Session=Depends(get_db)):
         raise HTTPException(status_code=404,detail=f"Le client d'identifiant {id_client} que vous tentez de supprimer n'existe pas.")
     
     deleted = Client_out.model_validate(client).model_dump()
+    _delete_predictions_for_client(id_client, db)
 
     db.query(Client).filter(Client.id_client == id_client).delete(synchronize_session=False)
     db.commit()
 
     return deleted
+
+
+def _delete_predictions_for_client(id_client, db):
+    db.query(Prediction).filter(Prediction.id_client == id_client).delete(synchronize_session=False)
+    db.commit()
 
 
 @app.delete("/DeletePredictionByIdPrediction",response_model=Prediction_out)

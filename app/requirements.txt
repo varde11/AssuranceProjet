@@ -13,3 +13,5 @@ chromadb
 fastapi
 python-multipart
 sqlalchemy
+psycopg2-binary==2.9.11
+numpy<2.0

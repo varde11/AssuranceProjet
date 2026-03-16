@@ -3,7 +3,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 yolo_path = os.path.join(BASE_DIR,"model","best.pt")
-
+# image_path = os.path.join(BASE_DIR,"model","dam2.jpg")
 
 
 model = None
@@ -16,7 +16,7 @@ def load_artificats_yolo():
 
 def objet_detection(image_path):
 
-    load_artificats_yolo()
+    #load_artificats_yolo()
 
     damage = []
     results = model(image_path,conf=0.1, iou=0.5)
@@ -38,7 +38,5 @@ def objet_detection(image_path):
     #print(damage)
     return damage
 
-
-# image_path = os.path.join(BASE_DIR,"model","dam5.jpg")
 # res=objet_detection(image_path)
 # print("damage reçu from yolo:",res)

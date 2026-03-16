@@ -1,26 +1,25 @@
 import os
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+#from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from langchain_community.vectorstores import Chroma
 
 from langchain_community.document_loaders import PyPDFLoader
 from dotenv import load_dotenv
-from constat import analyse_constat
-from yolo import objet_detection
 
 from json_repair import repair_json
 import json
 import os
+from schema import Prediction_out
 
 
 llm = None
 embedding_model = None
-
+vectorstore = None
 def load_rag_artificats():
 
-    global llm,embedding_model
+    global llm,embedding_model,vectorstore
 
     if llm is None:
         load_dotenv()
@@ -29,34 +28,17 @@ def load_rag_artificats():
             api_key= os.getenv("myfirstApiKey") ,
             model="llama-3.3-70b-versatile", 
             temperature=0.1
-        )
+        ).with_structured_output(Prediction_out)
 
     if embedding_model is None:
         embedding_model = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
+    
+    if vectorstore is None:
+        vectorstore = Chroma(embedding_function=embedding_model,persist_directory="app/vectorBD")
 
 
 def final_decision(damage_list:list,constat_element:dict):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    cnd_path = os.path.join(BASE_DIR,"ConditionGeneralAssuranceVarde.pdf")
-    load_rag_artificats() # A retirer, se chargera au lifespan
-
-    loader = PyPDFLoader(cnd_path)
-    docs = loader.load()
-
-    for i in docs:
-        i.metadata = {
-            'auteur':"varde11",
-            'page label' : '1'
-        }
     
-    splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
-    docs_chunk = splitter.split_documents(docs)
-    
-    vectorstore = Chroma.from_documents(
-    documents=docs_chunk,
-    embedding=embedding_model 
-    )
-
     query =""
 
     for dam in damage_list:
@@ -151,12 +133,12 @@ def final_decision(damage_list:list,constat_element:dict):
     """
 
     reponse_raw = llm.invoke(prompt)
-    reponse = repair_json(reponse_raw.content)
-    return json.loads(reponse)
+    #reponse = repair_json(reponse_raw.content)
+    return Prediction_out.model_validate(reponse_raw).model_dump()
 
 
-# damage_list = objet_detection("app\model\dam5.jpg")
-# constat_element = analyse_constat("app\model\constat2.jpg")
+# damage_list = objet_detection("app\model\dam2.jpg")
+# constat_element = analyse_constat("app\model\constat_aimable1.jpg")
 
 # print(final_decision(damage_list,constat_element))
 
