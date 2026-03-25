@@ -1,150 +1,188 @@
+import re
 import os
 from langchain_groq import ChatGroq
-from langchain_huggingface import HuggingFaceEmbeddings
-#from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-from langchain_community.vectorstores import Chroma
-
-from langchain_community.document_loaders import PyPDFLoader
 from dotenv import load_dotenv
+from schema import llm_schema
 
-from json_repair import repair_json
-import json
-import os
-from schema import Prediction_out
-
-
+load_dotenv()
 
 llm = None
-embedding_model = None
-vectorstore = None
+CONDITIONS_GENERALES_RAW = None
+
+# Mapping dégâts → articles nécessaires
+DAMAGE_ARTICLE_MAP = {
+    # Bris de glace → Article 4
+    r"windscreen|lunette|vitre|pare.brise|rear.windscreen|glass": ["ARTICLE 4"],
+    # Carrosserie → Article 8
+    r"bonnet|capot|door|portiere|bumper|pare.choc|fender|aile|mirror|retroviseur|scratch|rayure|dent": ["ARTICLE 8"],
+    # Mécanique → Article 9
+    r"engine|moteur|mecanique|boite|direction|train": ["ARTICLE 9"],
+    # Vol → Article 5
+    r"vol|stolen|theft": ["ARTICLE 5"],
+    # Incendie → Article 6
+    r"fire|incendie|explosion": ["ARTICLE 6"],
+}
+
+# Mots dans les observations qui déclenchent Article 12
+EXCLUSION_KEYWORDS = [
+    r"clignotant", r"telephone|téléphone|portable",
+    r"alcool|alcoolisé|ivre", r"drogue|stupefiant|stupefiants",
+    r"feu rouge|sens interdit|stop|vitesse",
+    r"fuite|scappé|scappee", r"permis",
+]
+
+
+def load_conditions():
+    global CONDITIONS_GENERALES_RAW
+    if CONDITIONS_GENERALES_RAW is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(base_dir, "ConditionGeneralAssuranceVarde.txt")
+        with open(path, "r", encoding="utf-8") as f:
+            CONDITIONS_GENERALES_RAW = f.read()
+
+
+def extract_article(text: str, article_name: str) -> str:
+    """Extrait un article complet depuis le texte des CG."""
+    # Cherche "ARTICLE X : ..." jusqu'au prochain ARTICLE ou fin de fichier
+    pattern = rf"({re.escape(article_name)}.*?)(?=ARTICLE \d+|$)"
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    return match.group(1).strip() if match else ""
+
+
+def get_relevant_articles(damage_list: list, obs_A: str, obs_B: str) -> str:
+    """Sélectionne uniquement les articles pertinents selon les dégâts et observations."""
+    load_conditions()
+
+    needed_articles = {"ARTICLE 2", "ARTICLE 12"}  
+
+    
+    combined_damage = " ".join(damage_list).lower()
+    for pattern, articles in DAMAGE_ARTICLE_MAP.items():
+        if re.search(pattern, combined_damage, re.IGNORECASE):
+            needed_articles.update(articles)
+
+    
+    combined_obs = f"{obs_A} {obs_B}".lower()
+    for kw in EXCLUSION_KEYWORDS:
+        if re.search(kw, combined_obs, re.IGNORECASE):
+            needed_articles.add("ARTICLE 12") 
+            break
+
+    # Extrait et concatène les articles pertinents
+    result = []
+    for article in sorted(needed_articles, key=lambda x: int(x.split()[1])):
+        content = extract_article(CONDITIONS_GENERALES_RAW, article)
+        if content:
+            result.append(content)
+
+    print(f"Articles extraits : {sorted(needed_articles)}")
+    return "\n\n".join(result)
+
+
 def load_rag_artificats():
-
-    global llm,embedding_model,vectorstore
-
+    global llm
     if llm is None:
-        load_dotenv()
-
         llm = ChatGroq(
-            api_key= os.getenv("GROQ_API_KEY") ,
-            model="llama-3.3-70b-versatile", 
-            temperature=0.1
-        ).with_structured_output(Prediction_out)
-
-    if embedding_model is None:
-        embedding_model = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
-    
-    if vectorstore is None:
-        vectorstore = Chroma(embedding_function=embedding_model,persist_directory="app/vectorBD")
+            api_key=os.getenv("GROQ_API_KEY"),
+            model="llama-3.3-70b-versatile",
+            temperature=0,
+        ).with_structured_output(llm_schema)
+    load_conditions()
 
 
-def final_decision(damage_list:list,constat_element:dict):
+def final_decision(damage_list: list, constat_element: dict):
     load_rag_artificats()
-    
-    query =""
 
-    for dam in damage_list:
-        query = query + " " + dam
-    
-    try :
-        query = query + " " + constat_element["vehicule A"]["Observation faite par A"]
-        query = query + " " + constat_element["vehicule B"]["Observation faite par B"] 
-        # si le dico n'a pas les éléments pointé
-        #{"vehicule A": {"Damage subit par A": "", "Observation faite par A": ""}, "vehicule B": {"Damage subit par B": "", "Observation faite par B": ""}}
-
+    try:
+        obs_A = constat_element["vehicule A"]["Observation faite par A"] or "Aucune observation"
+        dmg_A = constat_element["vehicule A"]["Damage subit par A"] or "Non précisé"
+        obs_B = constat_element["vehicule B"]["Observation faite par B"] or "Aucune observation"
     except KeyError as e:
-        print("Something went wrong:",e)
+        print("KeyError constat:", e)
+        obs_A = dmg_A = obs_B = "Non disponible"
+
     
+    regles = get_relevant_articles(damage_list, obs_A, obs_B)
 
     prompt = f"""
-   You are an expert in auto insurance investigations, specializing in analyzing complex handwritten accident reports and fraud detection.
+Tu es un expert en assurance automobile. Analyse ce dossier de sinistre et rends une décision précise pour le véhicule A (l'assuré).
 
-    STRICT RULES (MUST BE FOLLOWED):
+═══════════════════════════════════════
+RÈGLES APPLICABLES (extraites du contrat VARDE11) :
+{regles}
+═══════════════════════════════════════
 
-    1. The damage list detected by vision ({damage_list}) is the definitive source of information.
+DONNÉES DU SINISTRE :
 
-    2. ALL items in damage_list MUST appear in "details_degats".
+Dégâts détectés par vision IA sur le véhicule A (liste DÉFINITIVE) :
+{damage_list}
 
-    3. NO damage from damage_list should be ignored, even if it was not reported by vehicle A.
+Dégâts que le conducteur A déclare avoir subis :
+{dmg_A}
 
-    4. If damage is detected by vision but not reported by A, it must be included in the analysis.
+Ce que le conducteur A a observé pendant l'accident:
+{obs_A}
 
-    5. All part and damage names in the final JSON MUST be in French.
+Ce que le conducteur B a observé  pendant l'accident :
+{obs_B}
 
-    - If a term is provided in English, you must translate it.
+═══════════════════════════════════════
+INSTRUCTIONS :
 
-    - If the exact translation is uncertain, use a generic automotive term in French.
-    CONTEXT:
+ÉTAPE 1 — TRADUCTION DES DÉGÂTS
+- bonnet-dent → capot (bosse)
+- Rear-windscreen-Damage → lunette arrière
+- windscreen-damage → pare-brise avant
+- door-dent → portière (bosse)
+- bumper-dent → pare-choc (bosse)
+- fender-dent → aile (bosse)
+- mirror-damage → rétroviseur
+- headlight-damage → optique de phare
+- scratch → rayure
+Autre terme : traduis en français automobile courant.
 
-    An accident occurred between car A and car B.
+ÉTAPE 2 — EXCLUSIONS (Article 12)
+RÈGLE FONDAMENTALE : les observations du conducteur A décrivent ce qu'il a vue durant l'accident. Si A écrit "il a bougé", il parle de B.
 
-    Applicable insurance rules (extracted from the RAG):
+Une exclusion s'applique au véhicule A UNIQUEMENT dans ces deux cas :
+- CAS 1 : Le conducteur A est accusé d'une faute
+  
+- CAS 2 : Un rapport de police ou document officiel mentionne une faute du conducteur A
 
-    {vectorstore.similarity_search(query)}
+Dans tous les autres cas → exclusions_detectees="False", raison_exclusion="Aucune exclusion détectée"
 
-    Declarations from vehicle A regarding vehicle B :
-    -   {constat_element['vehicule A']['Observation faite par A']}
+Exemples concrets :
+- obs_A contient juste "il n'a pas respecté le code de la route" → décrit B → PAS une exclusion pour A
 
-    Damage that vehicle A reported having received : 
-    -   {constat_element['vehicule A']['Damage subit par A']}
+- obs_B contient "A était en état d'ivresse" → décrit A → exclusion pour A
 
-    Declarations from vehicle B regarding vehicle A:
-    -   {constat_element['vehicule B']['Observation faite par B']}
+ÉTAPE 3 — ANALYSE PIÈCE PAR PIÈCE
+Pour chaque élément de damage_list :
+- Si exclusion sur A → couvert="false", franchise="N/A", montant_remboursement="0€"
+- Lunette arrière / pare-brise / vitre → Article 4
+  * En réseau agréé : franchise="0€", montant jusqu'à 600€ (lunette), 800€ (pare-brise)
+  * Hors réseau : franchise="50€", déduis du montant
+- Capot / aile / portière / pare-choc / rétroviseur → Article 8
+  * obs_B mentionne explicitement que B est 100% responsable → franchise="0€"
+  * Sinon → franchise="450€", déduis du montant, plafond 2000€ par pièce
 
-    Damage observed on vehicle A by automatic vision (exhaustive list):
-    -   {damage_list}
+ÉTAPE 4 — TOTAL
+Somme des montant_remboursement des pièces couvertes = montant_remboursement_total
+Si non remboursé → montant_remboursement_total="0€"
 
-    MISSION:
-
-    - Compare the witness statements with the actual observed damage.
-
-    - Identify any applicable insurance exclusions.
-
-    - Determine whether vehicle A (only vehicle A) is covered by insurance.
-
-    OUTPUT FORMAT — STRICT JSON ONLY:
-
-    {{
-    "decodage_texte": "Detailed and logical explanation of the analysis, including any inconsistencies",
-
-    "exclusions_detectees": true/false,
-
-    "raison_exclusion": "None or Specify the reason why the vehicle A cannot be covered by insurance.",
-
-    "details_degats": [
-    {{
-    "piece": "name of the piece in French",
-
-    "couvert": true/false,
-
-    "franchise": "actual amount in euros or 'None'"
-
-    }}
-
-    ],
-
-    "decision_finale": "remboursé " or "non remboursé"
-
-    }}
-
-    IMPORTANT:
-
-    - The details_degats list must contain exactly all the damages present in damage_list.
-
-    - Returns NO text outside of the JSON, the JSON must be in french language.
-    """
+RÈGLES ABSOLUES :
+- Tous les éléments de damage_list dans details_degats
+- Noms de pièces en français uniquement
+- Cohérence obligatoire entre exclusions/decision/montant
+- JSON uniquement, aucun texte autour
+═══════════════════════════════════════
+"""
+    
+    print("damage A:",dmg_A)
+    print("*************************")
+    print("obA:",obs_A)
+    print("********************************")
+    print("obB",obs_B)
 
     reponse_raw = llm.invoke(prompt)
-    #reponse = repair_json(reponse_raw.content)
-    return Prediction_out.model_validate(reponse_raw).model_dump()
-
-
-# damage_list = objet_detection("app\model\dam2.jpg")
-# constat_element = analyse_constat("app\model\constat_aimable1.jpg")
-
-# print(final_decision(damage_list,constat_element))
-
-
-
-
-
+    return llm_schema.model_validate(reponse_raw).model_dump()

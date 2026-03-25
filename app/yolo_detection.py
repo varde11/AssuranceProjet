@@ -3,7 +3,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 yolo_path = os.path.join(BASE_DIR,"model","best.pt")
-# image_path = os.path.join(BASE_DIR,"model","dam2.jpg")
+#image_path = os.path.join(BASE_DIR,"model","dam2.jpg")
 
 
 model = None

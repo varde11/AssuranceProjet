@@ -1,7 +1,7 @@
 services:
   imageassurance:
     build: ./app
-    image: imageassurance
+    image: varde11/imageassurance:1.0
     container_name: containerassurance
     ports:
       - "8000:8000"
@@ -12,16 +12,22 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       GROQ_API_KEY: ${GROQ_API_KEY}
       API_URL: ${API_URL}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      ALGORITHM: ${ALGORITHM}
+      SECRET_KEY: ${SECRET_KEY}
+      AUTHORIZED_URL: ${AUTHORIZED_URL}
+
+
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\" || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 3
-      start_period: 900s
+      start_period: 60s
 
   ui:
     build: ./ui
-    image: uiassurance
+    image: varde11/uiassurance:1.0
     container_name: uiassurance
     ports:
       - "8501:8501"
@@ -33,7 +39,7 @@ services:
       
 
   db:
-    image: postgres:15
+    image: postgres:17
     container_name: assurance_db
     ports:
       - "5433:5432"

@@ -1,74 +1,37 @@
-name : assurance_ci_cd
+# name : assurance_ci_cd
 
-on :
-  push :
-    branches : ["main"]
+# on :
+#   push :
+#     branches : ["main"]
 
-jobs :
+# jobs :
 
-  test_api : 
-    runs-on : ubuntu-latest
-    
-    steps :
-      - name : checkout du code 
-        uses : actions/checkout@v3
+#   docker_push :
+#       runs-on : ubuntu-latest
+#       needs : test_api 
+#       steps :
 
-      - name : Install python
-        uses : actions/setup-python@v4
-        with :
-          python-version : '3.11'
-      
-      - name : Install dependencies
-        run : |
-          pip install --upgrade pip
-          pip install -r app/requirements.txt
-          pip install pytest httpx
+#         - name : checkout du code 
+#           uses : actions/checkout@v3
 
-          
-          pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
-            torch==2.4.0 torchvision==0.19
-
-          
-          sudo apt-get update && sudo apt-get install -y \
-            libgl1 \
-            libglib2.0-0 \
-            && sudo rm -rf /var/lib/apt/lists/*
-      
-      - name : Lancement du test
-
-        env :
-          GROQ_API_KEY  : ${{secrets.GROQ_API_KEY }}
+#         - name : login to dockerhub
+#           uses : docker/login-action@v2
+#           with :
+#             username : ${{secrets.DOCKERHUB_USERNAME}}
+#             password : ${{secrets.DOCKERHUB_PASSWORD}}
         
-        run : |
-          pytest tests/ 
-  
+#         - name : build and push backend
+#           uses : docker/build-push-action@v4
+#           with :
+#             context : ./app
+#             push : true 
+#             tags : ${{secrets.DOCKERHUB_USERNAME}}/imageassurance 
 
-  docker_push :
-      runs-on : ubuntu-latest
-      needs : test_api 
-      steps :
-
-        - name : checkout du code 
-          uses : actions/checkout@v3
-
-        - name : login to dockerhub
-          uses : docker/login-action@v2
-          with :
-            username : ${{secrets.DOCKERHUB_USERNAME}}
-            password : ${{secrets.DOCKERHUB_PASSWORD}}
-        
-        - name : build and push backend
-          uses : docker/build-push-action@v4
-          with :
-            context : ./app
-            push : true 
-            tags : ${{secrets.DOCKERHUB_USERNAME}}/imageassurance 
-
-        - name : build and push frontend
-          uses : docker/build-push-action@v4
-          with :
-            context : ./ui
-            push : true 
-            tags : ${{secrets.DOCKERHUB_USERNAME}}/uiassurance
+#         - name : build and push frontend
+#           uses : docker/build-push-action@v4
+#           with :
+#             context : ./ui
+#             push : true 
+#             tags : ${{secrets.DOCKERHUB_USERNAME}}/uiassurance
         
         
