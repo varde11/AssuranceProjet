@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from dotenv import load_dotenv
+
 
 from main import app 
 from db import get_db
@@ -25,7 +25,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False}, # Nécessaire pour SQLite
     poolclass=StaticPool
 )
-load_dotenv()
+
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -107,12 +107,17 @@ def test_add_and_verify_clients():
     assert client_data["id_client"] == "test1"
     assert client_data["nom"] == "test1"
 
-    # Supprimer le client test2 (nécessite peut-être auth, mais supposons que non)
-    response = client.delete("/DeleteClientByIdClient?id_client=test2")
+    # Se connecter avec test2 pour le supprimer
+    token2 = login_and_get_token("test2", "password123")
+    headers2 = {"Authorization": f"Bearer {token2}"}
+
+    # Supprimer le client test2 (maintenant protégé)
+    response = client.delete("/DeleteClientByIdClient", headers=headers2)
     assert response.status_code == 200
 
-    # Vérifier que test2 n'existe plus (si route publique)
-    # Note: ajuster selon les routes disponibles
+    # Vérifier que test2 n'existe plus (login échoue)
+    response = client.post("/login", json={"id_client": "test2", "password": "password123"})
+    assert response.status_code == 401
 
 
 def test_predictions_and_cleanup():
@@ -156,7 +161,7 @@ def test_predictions_and_cleanup():
     assert response.status_code == 200
 
     # Supprimer le client test2 (ce qui supprime aussi ses prédictions)
-    response = client.delete(f"/DeleteClientByIdClient?id_client={client_id}")
+    response = client.delete("/DeleteClientByIdClient", headers=headers)
     assert response.status_code == 200
 
     # Vérifier que la prédiction 2 n'existe plus
