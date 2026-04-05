@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from dotenv import load_dotenv
 
 from main import app 
 from db import get_db
@@ -24,6 +25,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False}, # Nécessaire pour SQLite
     poolclass=StaticPool
 )
+load_dotenv()
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

@@ -22,7 +22,7 @@ jobs :
         run : |
           pip install --upgrade pip
           pip install -r app/requirements.txt
-          pip install pytest httpx
+          pip install pytest httpx dotenv
       
       - name : Lancement du test
         
