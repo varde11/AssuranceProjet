@@ -4,3 +4,4 @@ __pycache__/
 assuranceVenv/
 .pytest_cache
 ui
+deploy/

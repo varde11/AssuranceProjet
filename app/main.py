@@ -37,7 +37,7 @@ app = FastAPI(title="API Assurance",lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("AUTHORIZED_URL")],
+    allow_origins=[os.getenv("AUTHORIZED_URL1"),os.getenv("AUTHORIZED_URL2")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"], 
