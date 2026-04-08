@@ -1,123 +1,137 @@
-# AssuranceProjet
+# VARDE11 — Analyse automatisée de sinistres automobile par IA
+![Aperçu de l'application](./image_assurance.png)
 
-Projet FastAPI + Streamlit pour la gestion de clients et prédictions d'expertise d'assurance.
+> Uploade une photo du véhicule endommagé et le constat amiable. L'IA détecte les dégâts, lit le manuscrit et rend une décision d'indemnisation en quelques secondes.
 
-## 🚀 Aperçu
-
-Ce projet contient :
-- **API FastAPI** (`app/`) exposant des routes pour gérer des clients et des prédictions.
-- **Interface Streamlit** (`ui/`) pour interagir avec l'API.
-- **Base de données** PostgreSQL via Docker Compose (ou SQLite pour les tests).
-- **Machine Learning / vision** : utilisation de modèles YOLO & un système RAG pour analyser des images et générer des prédictions.
+🔗 **Démo live** : [varde11-assurance-frontend.hf.space](https://varde11-assurance-frontend.hf.space)
 
 ---
 
-## 🧩 Architecture
+## Contexte
 
-- `app/` : backend FastAPI
-  - `main.py` : points d'entrée de l'API
-  - `schema.py` : schémas Pydantic
-  - `structure_table.py` : définition SQLAlchemy (Client / Prediction)
-  - `db.py` : configuration de la DB + session
-  - `yolo_detection.py` / `rag.py` / `constat.py` : logique ML et inference
-  - `model/` : modèles et images de test (`best.pt`, `dam2.jpg`, `constat_aimable1.jpg`, ...)
-
-- `ui/` : interface Streamlit
-
-- `tests/` : tests pytest
-
-- `docker-compose.yml` : orchestration service (API, UI, Postgres)
+L'analyse d'un dossier sinistre implique de croiser plusieurs sources d'information : dégâts visuels sur le véhicule, déclarations manuscrites du constat amiable, et conditions générales du contrat d'assurance. Ce projet automatise ce processus via un pipeline IA en 3 étapes.
 
 ---
 
-## ⚙️ Prérequis
+## Pipeline 
 
-- Docker + Docker Compose (recommandé)
-- Python 3.11 (pour exécution locale sans Docker)
+Ce projet suit un flux de traitement en plusieurs étapes qui combine vision, NLP et règles métier :
 
----
 
-## ✅ Exécution (Docker)
-
-1. Copier les variables d'environnement (exemple) :
-
-```bash
-cp .env.example .env
+## Pipeline IA
+```
+┌──────────────────┐     ┌──────────────────┐
+│  Photo véhicule  │     │  Photo constat   │
+└────────┬─────────┘     └────────┬─────────┘
+         │                        │
+         ▼                        ▼
+┌──────────────────┐     ┌──────────────────┐
+│     YOLO v8      │     │  Llama 4 Vision  │
+│ Détection dégâts │     │ Lecture manuscrit│
+└────────┬─────────┘     └────────┬─────────┘
+         │                        │
+         └───────────┬────────────┘
+                     │
+                     ▼
+          ┌──────────────────────┐
+          │   Extraction regex   │
+          │  Articles pertinents │
+          │  des conditions      │
+          │  générales           │
+          └──────────┬───────────┘
+                     │
+                     ▼
+          ┌──────────────────────┐
+          │    Llama 3.3-70b     │
+          │   Décision finale    │
+          └──────────┬───────────┘
+                     │
+                     ▼
+          ┌──────────────────────┐
+          │  Remboursé / Non     │
+          │  remboursé +         │
+          │  montant estimé      │
+          └──────────────────────┘
+                     |
+                     |
+                     ▼
+          Stockage des résultat dans la base de données
 ```
 
-2. Construire et démarrer les services :
 
+
+1. **Photo du véhicule** : YOLO v8 détecte les dégâts visibles sur le véhicule.
+2. **Photo du constat** : Llama 4 Vision lit et convertit le texte manuscrit du constat amiable.
+3. **Conditions générales** : le contrat est analysé par extraction regex pour isoler les articles pertinents.
+4. **LLM Decision** : le modèle de décision combine les informations des trois sources.
+5. **Décision finale** : sortie du workflow avec la décision d’indemnisation et le montant estimé.
+
+---
+
+## Fonctionnalités
+
+- **Détection de dégâts** — Modèle YOLO entraîné sur des images de véhicules accidentés (capot, pare-brise, portières, ailes...)
+- **Lecture de constat manuscrit** — Llama 4 Vision extrait les observations des conducteurs A et B depuis une photo du constat amiable
+- **Décision d'indemnisation** — LLM croise les dégâts détectés avec les conditions générales filtrées par regex (articles pertinents uniquement)
+- **Montant de remboursement** — Estimation du montant selon les plafonds et franchises du contrat
+- **Détection d'exclusions** — Alcool, téléphone, non-respect du code de la route, délit de fuite...
+- **Historique des analyses** — Espace personnel avec toutes les décisions passées
+- **Images de test** — Photos de véhicule et constat téléchargeables directement depuis l'interface
+
+---
+
+## Stack technique
+
+| Couche | Technologies |
+|---|---|
+| Vision IA | YOLO v8 (Ultralytics) |
+| Lecture manuscrit | Groq (Llama 4 Scout Vision) |
+| Décision | Groq (Llama 3.3-70b), Regex, Conditions générales |
+| Backend | FastAPI, SQLAlchemy, PostgreSQL, JWT |
+| Frontend | React, Vite, CSS Modules |
+| Déploiement | Docker, Docker Compose, HuggingFace Spaces |
+
+---
+
+## Lancer le projet en local
+
+### Prérequis
+- Docker & Docker Compose
+- Un compte [Groq](https://console.groq.com) pour la clé API
+- Le modèle YOLO `best.pt` dans `app/model/`
+
+### Variables d'environnement
+Crée un fichier `.env` à la racine :
+```env
+DATABASE_URL=postgresql://user:password@db:5432/assurance
+GROQ_API_KEY=groq_key
+SECRET_KEY=secret_key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+API_URL=http://localhost:8000
+AUTHORIZED_URL1 = http://localhost:8501
+```
+
+### Démarrage
 ```bash
+git https://github.com/varde11/AssuranceProjet
+cd varde11-assurance
 docker compose up --build
 ```
 
-3. Accéder à :
-- API FastAPI : http://localhost:8000
-- UI Streamlit : http://localhost:8501
+L'application est accessible sur `http://localhost:8501`
+
+>  Le premier démarrage est long (~5 min) — le backend charge YOLO et les modèles IA au démarrage.
 
 ---
 
-## 🧪 Exécution des tests (locale)
+## Tester l'application
 
-1. Activer l'environnement virtuel (si présent) :
-
-```powershell
-assuranceVenv\Scripts\Activate.ps1
-```
-
-2. Installer les dépendances (si nécessaire) :
-
-```bash
-pip install -r app/requirements.txt
-```
-
-3. Lancer les tests :
-
-```bash
-pytest tests/
-```
-
-> Les tests utilisent une base SQLite (fichier `dummy.db`) et réinitialisent la base avant chaque test.
+Pas de constat amiable sous la main ? Des fichiers de test (photo de véhicule + constat) sont téléchargeables directement depuis la page "Nouvelle analyse" de l'interface.
 
 ---
 
-## 🧠 API Principales
+## Auteur
 
-### Clients
-
-- `POST /AddClient` : ajoute un client
-- `GET /GetClientById?id_client=<id>` : récupère un client
-- `GET /GetAllClient` : récupère tous les clients
-- `DELETE /DeleteClientByIdClient?id_client=<id>` : supprime un client (et ses prédictions)
-
-### Prédictions
-
-- `POST /Prediction` (multipart/form-data)
-  - `id_client` (query param)
-  - `photo_car` (file)
-  - `photo_constat` (file)
-
-- `GET /GetPredictionByIdPrediction?id_prediction=<id>`
-- `GET /GetPredictionByIdClient?id_client=<id>`
-- `DELETE /DeletePredictionByIdPrediction?id_prediction=<id>`
-
----
-
-## 🧩 Configuration
-
-### Variables d'environnement attendues (Docker)
-
-- `DATABASE_URL` : URL de connexion PostgreSQL
-- `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` (dans `docker-compose.yml`)
-- `myfirstApiKey` / `API_URL` : pour les appels externes (Groq / LangChain)
-
----
-
-## 🛠️ Notes d'implémentation
-
-- La base de données en runtime est PostgreSQL (via `db/`), mais les tests utilisent SQLite.
-- Le module `yolo_detection` charge un modèle YOLO et doit pouvoir accéder à `app/model/best.pt`.
-- Le module `rag.py` dépend de clés API externes (Groq / LangChain).
-
----
-
+**VARDE11** — Vannel Feukou
+- LinkedIn : [vannel-evrard-feukou-noukatche90092](https://www.linkedin.com/in/vannel-evrard-feukou-noukatche90092)
