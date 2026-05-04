@@ -3,5 +3,5 @@ __pycache__/
 .vscode/
 assuranceVenv/
 .pytest_cache
-ui
 deploy/
+ui/assurance_frontend

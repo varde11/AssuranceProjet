@@ -23,7 +23,7 @@ DAMAGE_ARTICLE_MAP = {
     r"fire|incendie|explosion": ["ARTICLE 6"],
 }
 
-# Mots dans les observations qui déclenchent Article 12
+#déclenchent Article 12
 EXCLUSION_KEYWORDS = [
     r"clignotant", r"telephone|téléphone|portable",
     r"alcool|alcoolisé|ivre", r"drogue|stupefiant|stupefiants",

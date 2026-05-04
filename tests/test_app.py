@@ -22,7 +22,7 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///./dummy.db"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}, # Nécessaire pour SQLite
+    connect_args={"check_same_thread": False},
     poolclass=StaticPool
 )
 
@@ -44,7 +44,7 @@ client = TestClient(app)
 
 def setup_database():
     """Cette fonction réinitialise la base et crée un client test"""
-    # Réinitialiser complètement la base
+    
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
@@ -76,11 +76,11 @@ def login_and_get_token(id_client: str, password: str):
 
 def test_login():
     """Test de la route login"""
-    # Test login réussi
+    
     token = login_and_get_token("test1", "password123")
     assert token is not None
 
-    # Test login échoué
+
     response = client.post("/login", json={"id_client": "test1", "password": "wrong"})
     assert response.status_code == 401
 
@@ -89,54 +89,54 @@ def test_add_and_verify_clients():
     """Test ajout de client et vérification des clients existants"""
     load_rag_artificats()
     load_artificats_yolo()
-    # Ajouter un nouveau client test2
+    
     response = client.post("/AddClient", json={"id_client": "test2", "nom": "test2", "password": "password123"})
     assert response.status_code == 200
     added_client = response.json()
     assert added_client["id_client"] == "test2"
     assert added_client["nom"] == "test2"
 
-    # Se connecter avec test1 pour accéder aux routes protégées
+    
     token = login_and_get_token("test1", "password123")
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Vérifier le client connecté (/Me)
+    # (/Me)
     response = client.get("/Me", headers=headers)
     assert response.status_code == 200
     client_data = response.json()
     assert client_data["id_client"] == "test1"
     assert client_data["nom"] == "test1"
 
-    # Se connecter avec test2 pour le supprimer
+    
     token2 = login_and_get_token("test2", "password123")
     headers2 = {"Authorization": f"Bearer {token2}"}
 
-    # Supprimer le client test2 (maintenant protégé)
+    
     response = client.delete("/DeleteClientByIdClient", headers=headers2)
     assert response.status_code == 200
 
-    # Vérifier que test2 n'existe plus (login échoue)
+    
     response = client.post("/login", json={"id_client": "test2", "password": "password123"})
     assert response.status_code == 401
 
 
 def test_predictions_and_cleanup():
     """Test ajout de client, prédictions et suppression"""
-    # Ajouter client test2
+    
     response = client.post("/AddClient", json={"id_client": "test2", "nom": "test2", "password": "password123"})
     assert response.status_code == 200
     added_client = response.json()
-    client_id = added_client["id_client"]  # "test2"
+    client_id = added_client["id_client"]  
 
-    # Se connecter avec test2
+    
     token = login_and_get_token("test2", "password123")
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Ouvrir les fichiers pour la prédiction
+    
     with open("app/model/dam2.jpg", "rb") as photo_car_file, \
          open("app/model/constat_aimable1.jpg", "rb") as photo_constat_file:
         
-        # Faire la première prédiction
+        
         files = {
             "photo_car": ("dam2.jpg", photo_car_file, "image/jpeg"),
             "photo_constat": ("constat_aimable1.jpg", photo_constat_file, "image/jpeg")
@@ -147,8 +147,8 @@ def test_predictions_and_cleanup():
         assert prediction1["id_prediction"] == 1
         assert prediction1["id_client"] == client_id
 
-        # Faire la deuxième prédiction pour le même client
-        photo_car_file.seek(0)  # Remettre au début
+        
+        photo_car_file.seek(0)  
         photo_constat_file.seek(0)
         response = client.post("/Prediction", files=files, headers=headers)
         assert response.status_code == 200
@@ -156,14 +156,13 @@ def test_predictions_and_cleanup():
         assert prediction2["id_prediction"] == 2
         assert prediction2["id_client"] == client_id
 
-    # Supprimer la prédiction 1 (si route publique)
     response = client.delete("/DeletePredictionByIdPrediction?id_prediction=1")
     assert response.status_code == 200
 
-    # Supprimer le client test2 (ce qui supprime aussi ses prédictions)
+    
     response = client.delete("/DeleteClientByIdClient", headers=headers)
     assert response.status_code == 200
 
-    # Vérifier que la prédiction 2 n'existe plus
+    
     response = client.get("/GetPredictionByIdPrediction?id_prediction=2")
     assert response.status_code == 404
