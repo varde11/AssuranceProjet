@@ -9,7 +9,7 @@ load_dotenv()
 llm = None
 CONDITIONS_GENERALES_RAW = None
 
-# Mapping dégâts → articles nécessaires
+# Mapping dégâts→articles nécessaires
 DAMAGE_ARTICLE_MAP = {
     
     r"windscreen|lunette|vitre|pare.brise|rear.windscreen|glass": ["ARTICLE 4"],
