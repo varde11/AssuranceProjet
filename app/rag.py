@@ -11,15 +11,15 @@ CONDITIONS_GENERALES_RAW = None
 
 # Mapping dégâts → articles nécessaires
 DAMAGE_ARTICLE_MAP = {
-    # Bris de glace → Article 4
+    
     r"windscreen|lunette|vitre|pare.brise|rear.windscreen|glass": ["ARTICLE 4"],
-    # Carrosserie → Article 8
+    
     r"bonnet|capot|door|portiere|bumper|pare.choc|fender|aile|mirror|retroviseur|scratch|rayure|dent": ["ARTICLE 8"],
-    # Mécanique → Article 9
+    
     r"engine|moteur|mecanique|boite|direction|train": ["ARTICLE 9"],
-    # Vol → Article 5
+    
     r"vol|stolen|theft": ["ARTICLE 5"],
-    # Incendie → Article 6
+    
     r"fire|incendie|explosion": ["ARTICLE 6"],
 }
 
@@ -43,7 +43,7 @@ def load_conditions():
 
 def extract_article(text: str, article_name: str) -> str:
     """Extrait un article complet depuis le texte des CG."""
-    # Cherche "ARTICLE X : ..." jusqu'au prochain ARTICLE ou fin de fichier
+
     pattern = rf"({re.escape(article_name)}.*?)(?=ARTICLE \d+|$)"
     match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
     return match.group(1).strip() if match else ""
@@ -68,7 +68,7 @@ def get_relevant_articles(damage_list: list, obs_A: str, obs_B: str) -> str:
             needed_articles.add("ARTICLE 12") 
             break
 
-    # Extrait et concatène les articles pertinents
+    
     result = []
     for article in sorted(needed_articles, key=lambda x: int(x.split()[1])):
         content = extract_article(CONDITIONS_GENERALES_RAW, article)
@@ -84,7 +84,7 @@ def load_rag_artificats():
     if llm is None:
         llm = ChatGroq(
             api_key=os.getenv("GROQ_API_KEY"),
-            model="llama-3.3-70b-versatile",
+            model="qwen/qwen3-32b",
             temperature=0,
         ).with_structured_output(llm_schema)
     load_conditions()
